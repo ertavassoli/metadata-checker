@@ -6,6 +6,18 @@ from os import path
 import pickle
 from bs4 import BeautifulSoup
 
+
+def latest_design_id_finder(study_design_ids):
+    study_design_ids_splitted = [item.split('@') for item in study_design_ids]
+    for index, item in enumerate(study_design_ids_splitted):
+        if len(item) == 1:
+            study_design_ids_splitted[index] = [item[0], '-1']
+
+    sorted_study_design_ids_splitted = sorted(study_design_ids_splitted, key=lambda item: float(item[1]))
+    latest_design_id = '@'.join(sorted_study_design_ids_splitted[-1])
+    return latest_design_id
+
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="UTF-8")
 
 # retrieving study protocols
@@ -33,20 +45,18 @@ else:
     with open("study_dict_list.pickle", "rb") as file:
         study_dict_list = pickle.load(file)
 
+study_design_ids = []
+
 for study in study_dict_list:
     if study['protocol'] == pn_metadata_protocol:
-        print(study['designId'])
+        study_design_ids.append(study['designId'])
 
+latest_design_id = latest_design_id_finder(study_design_ids)
 
-# print(studies_dict)
-# print(response.json())
+print(latest_design_id)
 
-# response = requests.get("http://naphznv3a.phtstudy.com:3010/api/v1/json/export/{0}/ods".format(default_id))
+response = requests.get("http://naphznv3a.phtstudy.com:3010/api/v1/json/export/{0}/ods".format(latest_design_id))
+content = response.content.decode('latin-1').encode('utf8')
+study_designer_json = json.loads(content)
 
-# default_id = ''
-# response = requests.get("http://naphznv3a.phtstudy.com:3010/api/v1/json/export/5b0fea03976a8f1989b789a3/ods")
-# content = response.content.decode('cp1252').encode('utf8')
-# json_dict = json.loads(content)
-# print(type(json_dict))
-
-# for codelistdef in soup.findAll('CodelistDef'):
+print(study_designer_json)

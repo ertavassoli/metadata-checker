@@ -5,6 +5,7 @@ import io
 from os import path
 import pickle
 from bs4 import BeautifulSoup
+import pandas as pd
 
 
 # this is the exclusion list for kdSU's under StudyEventDef with "kdSE"="LogPad"
@@ -44,12 +45,11 @@ def user_input_pn_metadata_file_name():
     """
     is_name_in_directory = False
     while not is_name_in_directory:
-        pn_metadata_file_name = input("Enter the full name of the pn metadata xml file you would like to parse: ")
+        pn_metadata_file_name = input("Enter the full name of the pn metadata xml file you would like to parse (e.g. pn_metadata.xml): ")
         if not path.exists("{}".format(pn_metadata_file_name)):
             print("File not found. Make sure the file name is *.xml and it resides in the same path as main.py ...")
         else:
             is_name_in_directory = True
-            print("Parsing {} ...".format(pn_metadata_file_name))
 
     return pn_metadata_file_name
 
@@ -58,7 +58,7 @@ def find_study_protocols(pn_metadata_file_name):
     """
     parses pn metadata file and returns a list of study protocols
     """
-    with open('pn_metadata.xml', 'r') as f:
+    with open(pn_metadata_file_name, 'r') as f:
 
         soup = BeautifulSoup(f.read(), 'lxml')
         study_name = soup.body.study.metadata.identification.description.string
@@ -226,11 +226,16 @@ def create_study_designer_su_name_dictionary(study_designer_json):
     """
     creates a dictionary that maps su => name
     """
-    su_name_map = {}
-    for questionnaire in study_designer_json['questionnaires']:
-        su_name_map[questionnaire['su']] = questionnaire['name']
+    try:
+        su_name_map = {}
+        for questionnaire in study_designer_json['questionnaires']:
+            su_name_map[questionnaire['su']] = questionnaire['name']
 
-    return su_name_map
+        return su_name_map
+
+    except KeyError as e:
+        print("study designer API get request returned an incorrect json\n:{}".format(study_designer_json))
+        sys.exit()
 
 
 def create_study_designer_su_ig_it_dictionary(study_designer_json, ig_exclusion_list):
@@ -256,24 +261,218 @@ def create_study_designer_su_ig_it_dictionary(study_designer_json, ig_exclusion_
     return su_name_map, su_ig_it_map
 
 
+# ---------------------------------------- creating csvs and report diffs
+
+def create_kdsu_su_name_csv_diff_report(kdSU_name_map, su_name_map):
+
+    df_dict = {}
+    df_dict['pn_metadata name'] = []
+    df_dict['study_designer name'] = []
+    for kdsu, name in kdSU_name_map.items():
+        df_dict['pn_metadata name'].append(name)
+    for su, name in su_name_map.items():
+        df_dict['study_designer name'].append(name)
+
+    # report
+    kdsu_su_diff_name = list(set(df_dict['pn_metadata name']) - set(df_dict['study_designer name']))
+    su_kdsu_diff_name = list(set(df_dict['study_designer name']) - set(df_dict['pn_metadata name']))
+
+    print("------------------------------- kdsu - su - names -------------------------------")
+    print("pn_metadata has the following kdsu names that are not present in study designer su name set:")
+    for count, item in enumerate(kdsu_su_diff_name):
+        print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su names values that are not present in pn_metadata kdsu name set:")
+    for count, item in enumerate(su_kdsu_diff_name):
+        print('.    '.join([str(count + 1), item]))
+    print("\n")
+    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
+    column_length_difference = len(df_dict['pn_metadata name']) - len(df_dict['study_designer name'])
+
+    if column_length_difference < 0:
+        for count in range(column_length_difference):
+            df_dict['pn_metadata name'].append('ZZZ-None')
+
+    elif column_length_difference > 0:
+        for count in range(column_length_difference):
+            df_dict['study_designer name'].append('ZZZ-None')
+
+    for column_name, column_rows in df_dict.items():
+        df_dict[column_name] = sorted(column_rows)
+
+    df = pd.DataFrame(data=df_dict)
+    df.to_csv("kdsu_su_name.csv")
+    return df
+
+
+def create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map):
+
+    df_dict = {}
+    df_dict['pn_metadata kdsu'] = []
+    df_dict['study_designer su'] = []
+    for kdsu, name in kdSU_name_map.items():
+        df_dict['pn_metadata kdsu'].append(kdsu)
+    for su, name in su_name_map.items():
+        df_dict['study_designer su'].append(su)
+
+    # report
+    kdsu_su_diff_id = list(set(df_dict['pn_metadata kdsu']) - set(df_dict['study_designer su']))
+    su_kdsu_diff_id = list(set(df_dict['study_designer su']) - set(df_dict['pn_metadata kdsu']))
+
+    print("------------------------------- kdsu - su - id -------------------------------")
+    print("pn_metadata has the following kdsu id values that are not present in study designer su id set:")
+    for count, item in enumerate(kdsu_su_diff_id):
+        print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su id values that are not present in pn_metadata kdsu id set:")
+    for count, item in enumerate(su_kdsu_diff_id):
+        print('.    '.join([str(count + 1), item]))
+    print("\n")
+
+    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
+    column_length_difference = len(df_dict['pn_metadata kdsu']) - len(df_dict['study_designer su'])
+
+    if column_length_difference < 0:
+        for count in range(column_length_difference):
+            df_dict['pn_metadata kdsu'].append('ZZZ-None')
+
+    elif column_length_difference > 0:
+        for count in range(column_length_difference):
+            df_dict['study_designer su'].append('ZZZ-None')
+
+    for column_name, column_rows in df_dict.items():
+        df_dict[column_name] = sorted(column_rows)
+
+    df = pd.DataFrame(data=df_dict)
+    df.to_csv("kdsu_su_id.csv")
+    return df
+
+
+def create_kdig_ig_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
+
+    df_dict = {}
+    df_dict['pn_metadata kdsu.kdig'] = []
+    df_dict['study_designer su.ig'] = []
+    for kdsu, kdig_dict in kdSU_kdIG_kdIT_map.items():
+        for kdig, kdit_list in kdig_dict.items():
+            df_dict['pn_metadata kdsu.kdig'].append('.'.join([kdsu, kdig]))
+
+    for su, ig_dict in su_ig_it_map.items():
+        for ig, it_list in ig_dict.items():
+            df_dict['study_designer su.ig'].append('.'.join([su, ig]))
+
+    # report
+    kdig_ig_diff = list(set(df_dict['pn_metadata kdsu.kdig']) - set(df_dict['study_designer su.ig']))
+    ig_kdig_diff = list(set(df_dict['study_designer su.ig']) - set(df_dict['pn_metadata kdsu.kdig']))
+
+    print("------------------------------- kdig - ig - id -------------------------------")
+    print("pn_metadata has the following kdig values that are not present in study designer ig set:")
+    for count, item in enumerate(kdig_ig_diff):
+        print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su values that are not present in pn_metadata kdsu set:")
+    for count, item in enumerate(ig_kdig_diff):
+        print('.    '.join([str(count + 1), item]))
+    print("\n")
+
+    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
+    column_length_difference = len(df_dict['pn_metadata kdsu.kdig']) - len(df_dict['study_designer su.ig'])
+
+    if column_length_difference < 0:
+        for count in range(column_length_difference):
+            df_dict['pn_metadata kdsu.kdig'].append('ZZZ-None')
+
+    elif column_length_difference > 0:
+        for count in range(column_length_difference):
+            df_dict['study_designer su.ig'].append('ZZZ-None')
+
+    for column_name, column_rows in df_dict.items():
+        df_dict[column_name] = sorted(column_rows)
+
+    df = pd.DataFrame(data=df_dict)
+    df.to_csv("kdsu.kdig_su.ig_id.csv")
+    return df
+
+
+def create_kdit_it_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
+
+    df_dict = {}
+    df_dict['pn_metadata kdsu.kdig.kdit'] = []
+    df_dict['study_designer su.ig.it'] = []
+    for kdsu, kdig_dict in kdSU_kdIG_kdIT_map.items():
+        for kdig, kdit_list in kdig_dict.items():
+            for kdit in kdit_list:
+                df_dict['pn_metadata kdsu.kdig.kdit'].append('.'.join([kdsu, kdig, kdit]))
+
+    for su, ig_dict in su_ig_it_map.items():
+        for ig, it_list in ig_dict.items():
+            for it in it_list:
+                df_dict['study_designer su.ig.it'].append('.'.join([su, ig, it]))
+
+    # report
+    kdit_it_diff = list(set(df_dict['pn_metadata kdsu.kdig.kdit']) - set(df_dict['study_designer su.ig.it']))
+    it_kdit_diff = list(set(df_dict['study_designer su.ig.it']) - set(df_dict['pn_metadata kdsu.kdig.kdit']))
+
+    print("------------------------------- kdit - it - id -------------------------------")
+    print("pn_metadata has the following kdit values that are not present in study designer it set:")
+    for count, item in enumerate(kdit_it_diff):
+        print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following it values that are not present in pn_metadata kdit set:")
+    for count, item in enumerate(it_kdit_diff):
+        print('.    '.join([str(count + 1), item]))
+    print("\n")
+
+    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
+    column_length_difference = len(df_dict['pn_metadata kdsu.kdig.kdit']) - len(df_dict['study_designer su.ig.it'])
+
+    if column_length_difference < 0:
+        for count in range(column_length_difference):
+            df_dict['pn_metadata kdsu.kdig.kdit'].append('ZZZ-None')
+
+    elif column_length_difference > 0:
+        for count in range(column_length_difference):
+            df_dict['study_designer su.ig.it'].append('ZZZ-None')
+
+    for column_name, column_rows in df_dict.items():
+        df_dict[column_name] = sorted(column_rows)
+
+    df = pd.DataFrame(data=df_dict)
+    df.to_csv("kdsu.kdig.kdit_su.ig.it_id.csv")
+    return df
+
+
 if __name__ == "__main__":
-    # pn_metadata_file_name = user_input_pn_metadata_file_name()
-    pn_metadata_file_name = "pn_metadata.xml"
-    print("parsing pn metadata ... \n")
+    pn_metadata_file_name = user_input_pn_metadata_file_name()
+    # pn_metadata_file_name = "pn_metadata.xml"
+    print("parsing {}... \n".format(pn_metadata_file_name))
 
     soup_datadictionary, pn_metadata_protocol = find_study_protocols(pn_metadata_file_name)
     print("the protocols for this study according to {0} are: \n{1} \n".format(pn_metadata_file_name, pn_metadata_protocol))
 
     # pn_metadata
     kdSU_name_map, kdSU_kdIG_kdIT_map = create_pn_metadata_kdSU_kdIG_kdIT_dictionary(soup_datadictionary, kdSU_exclusion_list, kdIG_exclusion_list)
-    print("pn_metadata kdsu => name: \n{} \n".format(kdSU_name_map))
-    print("pn_metadata kdSU => kdIG => kdIT: \n{} \n".format(kdSU_kdIG_kdIT_map))
+    # print("pn_metadata kdsu => name: \n{} \n".format(kdSU_name_map))
+    # print("pn_metadata kdSU => kdIG => kdIT: \n{} \n".format(kdSU_kdIG_kdIT_map))
 
     # getting study designer study json
     study_designer_json = get_study_designer_json(soup_datadictionary, pn_metadata_protocol)
 
     # study designer
-    print("parsing study designer ... \n")
+    # print("parsing study designer json ... \n")
     su_name_map, su_ig_it_map = create_study_designer_su_ig_it_dictionary(study_designer_json, ig_exclusion_list)
-    print("study_designer su => name: \n{} \n".format(su_name_map))
-    print("study_designer su => ig => it: \n{} \n".format(su_ig_it_map))
+    # print("study_designer su => name: \n{} \n".format(su_name_map))
+    # print("study_designer su => ig => it: \n{} \n".format(su_ig_it_map))
+
+    # ---------------------------------------- creating csvs + reports
+    dataframe = create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map)
+    print(dataframe)
+    print('\n')
+
+    dataframe = create_kdsu_su_name_csv_diff_report(kdSU_name_map, su_name_map)
+    print(dataframe)
+    print('\n')
+
+    dataframe = create_kdig_ig_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map)
+    print(dataframe)
+    print('\n')
+
+    dataframe = create_kdit_it_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map)
+    print(dataframe)
+    print('\n')

@@ -2,19 +2,19 @@
 0,CDLQI,CDLQI
 1,DLQI,DLQI
 2,Date Confirmation,Date Confirmation
-3,Dosing Diary,Dosing Diary
-4,EQ-5D-5L,EQ-5D-5L
-5,EQ-5D-Y,EQ-5D-Y
-6,FACIT-Fatigue,FACIT-Fatigue
-7,HADS,HADS
-8,Handheld Training Module,Handheld Training Module
-9,Night Time Itch Scale,Night Time Itch Scale
-10,POEM,POEM
-11,PSAAD,PSAAD
-12,Ped FACIT-Fatigue,Ped FACIT-Fatigue
-13,Pruritus NRS,Pruritus NRS
-14,PtGA,Pruritus NRS Eligibility
-15,SF-36 Acute,PtGA
-16,Tablet Training Module,SF-36 Acute
-17,WPAI:AD,Tablet Training Module
-18,ZZZ-None,WPAI:AD
+3,Deactivation,Dosing Diary
+4,Dosing Diary,EQ-5D-5L
+5,EQ-5D-5L,EQ-5D-Y
+6,EQ-5D-Y,FACIT-Fatigue
+7,FACIT-Fatigue,HADS
+8,HADS,Handheld Training Module
+9,Handheld Training Module,Night Time Itch Scale
+10,Night Time Itch Scale,POEM
+11,POEM,PSAAD
+12,PSAAD,Ped FACIT-Fatigue
+13,Ped FACIT-Fatigue,Pruritus NRS
+14,Pruritus NRS,Pruritus NRS Eligibility
+15,PtGA,PtGA
+16,SF-36 Acute,SF-36 Acute
+17,Tablet Training Module,Tablet Training Module
+18,WPAI:AD,WPAI:AD

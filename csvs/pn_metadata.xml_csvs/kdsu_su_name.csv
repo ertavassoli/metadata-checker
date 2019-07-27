@@ -1,12 +1,14 @@
 ,kdsu_name,su_name
 0,ACQ5,ACQ5
 1,Continuation Report,Continuation Report
-2,Eligibility Report,Eligibility Report
-3,Evening Diary,Evening Diary
-4,HRU,HRU
-5,Handheld Training Module,Handheld Training Module
-6,Morning Diary,Morning Diary
-7,PHQ-9,PHQ-9
-8,PHQ-9 (Handheld),PHQ-9 (Handheld)
-9,Tablet Training Module,Tablet Training Module
-10,WPAI:SHP,WPAI-SHP
+2,Deactivate Subject,~~~ MISMATCH ~~~
+3,Eligibility Report,Eligibility Report
+4,Evening Diary,Evening Diary
+5,HRU,HRU
+6,Handheld Training Module,Handheld Training Module
+7,Morning Diary,Morning Diary
+8,PHQ-9,PHQ-9
+9,PHQ-9 (Handheld),PHQ-9 (Handheld)
+10,Tablet Training Module,Tablet Training Module
+11,~~~ MISMATCH ~~~,WPAI-SHP
+12,WPAI:SHP,~~~ MISMATCH ~~~

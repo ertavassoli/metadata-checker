@@ -1,22 +1,23 @@
-,kdsu.kdig,su.ig
-0,CDLQI.CDLQI,DLQI.
-1,DLQI.DLQI,CDLQI.CDLQI
-2,DateConf.DateConf,DLQI.DLQI
-3,DosingDiary.DosingDiary,DateConf.DateConf
-4,EQ5D5LT.EQ5D5LT,DosingDiary.DosingDiary
-5,EQ5DY.EQ5DY,EQ5D5LT.EQ5D5LT
-6,FACITFT.FACITFT,EQ5DY.EQ5DY
-7,HADS.HADS,FACITFT.FACITFT
-8,HHTrainingModule.HHTrainingModule,HADS.HADS
-9,NightTimeItchScale.Nighttimeitchscale,HHTrainingModule.HHTrainingModule
-10,POEM.POEM,Nighttimeitchscale.Nighttimeitchscale
-11,PSAAD.PSAAD,PtGA.PGA
-12,PedFACITFatigue.PedFACITFatigue,POEM.POEM
-13,PruritusNRSHH.PruritusNRSHH,PRUNRSELG.PRUNRSELG
-14,PtGA.PtGA,PSAAD.PSAAD
-15,SFA36T.SFA36T,PedFACITFatigue.PedFACITFatigue
-16,TTM.TTM,PruritusNRSHH.PruritusNRSHH
-17,WPAIAD.WPAIAD,PtGA.PtGA
-18,ZZZ.ZZZ,SFA36T.SFA36T
-19,ZZZ.ZZZ,TTM.TTM
-20,ZZZ.ZZZ,WPAIAD.WPAIAD
+,kdsu-->kdig,su-->ig
+0,CDLQI-->CDLQI,CDLQI-->CDLQI
+1,DLQI-->DLQI,DLQI-->DLQI
+2,DateConf-->DateConf,DateConf-->DateConf
+3,DeactivateSubject-->DeactivateSubject,~~~ MISMATCH ~~~
+4,DosingDiary-->DosingDiary,DosingDiary-->DosingDiary
+5,EQ5D5LT-->EQ5D5LT,EQ5D5LT-->EQ5D5LT
+6,EQ5DY-->EQ5DY,EQ5DY-->EQ5DY
+7,FACITFT-->FACITFT,FACITFT-->FACITFT
+8,HADS-->HADS,HADS-->HADS
+9,HHTrainingModule-->HHTrainingModule,HHTrainingModule-->HHTrainingModule
+10,NightTimeItchScale-->Nighttimeitchscale,~~~ MISMATCH ~~~
+11,~~~ MISMATCH ~~~,Nighttimeitchscale-->Nighttimeitchscale
+12,POEM-->POEM,POEM-->POEM
+13,~~~ MISMATCH ~~~,PRUNRSELG-->PRUNRSELG
+14,PSAAD-->PSAAD,PSAAD-->PSAAD
+15,PedFACITFatigue-->PedFACITFatigue,PedFACITFatigue-->PedFACITFatigue
+16,PruritusNRSHH-->PruritusNRSHH,PruritusNRSHH-->PruritusNRSHH
+17,~~~ MISMATCH ~~~,PtGA-->PGA
+18,PtGA-->PtGA,PtGA-->PtGA
+19,SFA36T-->SFA36T,SFA36T-->SFA36T
+20,TTM-->TTM,TTM-->TTM
+21,WPAIAD-->WPAIAD,WPAIAD-->WPAIAD

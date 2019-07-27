@@ -17,7 +17,7 @@ import pandas as pd
 #   <SigningUnitRef ID="LogPad.SigningUnitRef.640" SigningUnitDefID="LogPad.SigningUnitDef.633" kdSU="APC"/>
 #   ...
 
-kdSU_exclusion_list = ["AnalysisPeriodLabel", "AssigneSense", "Assignment", "APC", "EndWebProUse", "EndLogPadUse", "ICAC", "ISAC", "NewCaregiver", "RegisterASMA1", "AddUser", "DeactivateSubject", "DeactivateUser", "Replacement", "Synchronization", "Training", "VisitEnd", "VisitStart", "Activation", "EstablishID", "ConfirmID"]
+kdSU_exclusion_list = ["AnalysisPeriodLabel", "AssigneSense", "Assignment", "APC", "EndWebProUse", "EndLogPadUse", "ICAC", "ISAC", "NewCaregiver", "RegisterASMA1", "AddUser", "DeactivateUser", "Replacement", "Synchronization", "Training", "VisitEnd", "VisitStart", "Activation", "EstablishID", "ConfirmID"]
 su_exclusion_list = ["EndWebProUse"]
 # this is the list of kdIG names that are ignored
 # e.g.
@@ -28,10 +28,10 @@ su_exclusion_list = ["EndWebProUse"]
 #   <ItemGroupRef ID="LogPad.ItemGroupRef.1880" ItemGroupStyle="SingleColumnInTable" HeaderType="None" ItemGroupDefID="LogPad.ItemGroupDef.906" kdIG="CG" Name="Caregiver Submit"/>
 #   ...
 
-kdIG_exclusion_list = ["Protocol", "Header", "FormLevelData", "CG", "LogPadPerformance", "NetProInformation", "TimeZone", "Phase"]
+kdIG_exclusion_list = ["Protocol", "Header", "FormLevelData", "CG", "LogPadPerformance", "EntryMode", "NetProInformation", "TimeZone", "Phase"]
 
 # for study designer if ig is equal to any item in the list below, it is ignored.
-ig_exclusion_list = ["-"]
+ig_exclusion_list = ["-", ""]
 
 # this is used for writing buffer out to terminal.
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="UTF-8")
@@ -260,6 +260,57 @@ def create_study_designer_su_ig_it_dictionary(study_designer_json, su_exclusion_
 
 
 # ---------------------------------------- creating csvs and report diffs
+def smaller_list_to_larger_comparison(sm, lg):
+    """
+    this function and next are used to insert --- MISMATCH --- in report columns where values mismatch.
+    make sure both lists are sorted before calling these functions.
+    """
+    for i in range(len(sm)):
+        if sm[i] != lg[i]:
+            if sm[i] > lg[i]:
+                sm.insert(i, '~~~ MISMATCH ~~~')
+            else:
+                lg.insert(i, '~~~ MISMATCH ~~~')
+
+
+def larger_list_to_smaller_comparison(list_a, list_b):
+
+    lg = list_a
+    sm = list_b
+
+    if len(list_b) > len(list_a):
+        lg = list_b
+        sm = list_a
+
+    for i in range(len(lg)):
+        if i < len(sm):
+            if lg[i] != sm[i] and sm[i] != '~~~ MISMATCH ~~~' and lg[i] != '~~~ MISMATCH ~~~':
+                if sm[i] > lg[i]:
+                    sm.insert(i, '~~~ MISMATCH ~~~')
+                else:
+                    lg.insert(i, '~~~ MISMATCH ~~~')
+                    larger_list_to_smaller_comparison(lg, sm)
+        else:
+            sm.append('~~~ MISMATCH ~~~')
+
+
+def add_includeInReports(ig_it_column, dict_includeInReports):
+    """
+    this function is meant to introduce ~~~ MISMATCH ~~~ values in the correct places in the it.IncludeInReports column.
+    """
+    it_includeInReports = []
+    for item in ig_it_column:
+        if item != "~~~ MISMATCH ~~~":
+            it = item.split('-->')[1]
+            it_includeInReports.append("{}-->{}".format(it, dict_includeInReports[it]))
+        else:
+            it_includeInReports.append("~~~ MISMATCH ~~~")
+
+    return it_includeInReports
+
+
+# ----------------------------------------
+
 
 def create_kdsu_su_name_csv_diff_report(kdSU_name_map, su_name_map):
 
@@ -272,30 +323,36 @@ def create_kdsu_su_name_csv_diff_report(kdSU_name_map, su_name_map):
         df_dict['su_name'].append(name)
 
     # report
-    kdsu_su_diff_name = list(set(df_dict['kdsu_name']) - set(df_dict['su_name']))
-    su_kdsu_diff_name = list(set(df_dict['su_name']) - set(df_dict['kdsu_name']))
+    kdsu_su_diff_name = sorted(list(set(df_dict['kdsu_name']) - set(df_dict['su_name'])))
+    su_kdsu_diff_name = sorted(list(set(df_dict['su_name']) - set(df_dict['kdsu_name'])))
 
     print("------------------------------- kdsu - su - names -------------------------------")
-    print("pn_metadata has the following kdsu names that are not present in study designer su name set: (format ==> kdsu name)")
-    for count, item in enumerate(kdsu_su_diff_name):
-        print('.    '.join([str(count + 1), item]))
-    print("study_designer has the following su names values that are not present in pn_metadata kdsu name set: (format ==> su name)")
-    for count, item in enumerate(su_kdsu_diff_name):
-        print('.    '.join([str(count + 1), item]))
+    print("pn_metadata has the following kdsu names that are not present in study designer su name set: (kdsu_name vs. su_name)")
+    if len(kdsu_su_diff_name) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(kdsu_su_diff_name):
+            print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su names values that are not present in pn_metadata kdsu name set: (su name vs. kdsu name)")
+    if len(su_kdsu_diff_name) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(su_kdsu_diff_name):
+            print('.    '.join([str(count + 1), item]))
     print("\n")
     # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
     column_length_difference = len(df_dict['kdsu_name']) - len(df_dict['su_name'])
 
-    if column_length_difference < 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['kdsu_name'].append('ZZZ-None')
-
-    elif column_length_difference > 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['su_name'].append('ZZZ-None')
-
     for column_name, column_rows in df_dict.items():
         df_dict[column_name] = sorted(column_rows)
+
+    if column_length_difference > 0:
+        smaller_list_to_larger_comparison(df_dict['su_name'], df_dict['kdsu_name'])
+        larger_list_to_smaller_comparison(df_dict['kdsu_name'], df_dict['su_name'])
+
+    elif column_length_difference < 0:
+        smaller_list_to_larger_comparison(df_dict['kdsu_name'], df_dict['su_name'])
+        larger_list_to_smaller_comparison(df_dict['su_name'], df_dict['kdsu_name'])
 
     df = pd.DataFrame(data=df_dict)
     df.to_csv("csvs/{}_csvs/kdsu_su_name.csv".format(pn_metadata_file_name))
@@ -313,31 +370,37 @@ def create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map):
         df_dict['su'].append(su)
 
     # report
-    kdsu_su_diff_id = list(set(df_dict['kdsu']) - set(df_dict['su']))
-    su_kdsu_diff_id = list(set(df_dict['su']) - set(df_dict['kdsu']))
+    kdsu_su_diff_id = sorted(list(set(df_dict['kdsu']) - set(df_dict['su'])))
+    su_kdsu_diff_id = sorted(list(set(df_dict['su']) - set(df_dict['kdsu'])))
 
     print("------------------------------- kdsu - su - id -------------------------------")
-    print("pn_metadata has the following kdsu id values that are not present in study designer su id set: (format ==> kdsu)")
-    for count, item in enumerate(kdsu_su_diff_id):
-        print('.    '.join([str(count + 1), item]))
-    print("study_designer has the following su id values that are not present in pn_metadata kdsu id set: (format ==> su)")
-    for count, item in enumerate(su_kdsu_diff_id):
-        print('.    '.join([str(count + 1), item]))
+    print("pn_metadata has the following kdsu id values that are not present in study designer su id set: (kdsu vs. su)")
+    if len(kdsu_su_diff_id) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(kdsu_su_diff_id):
+            print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su id values that are not present in pn_metadata kdsu id set: (su vs. kdsu)")
+    if len(su_kdsu_diff_id) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(su_kdsu_diff_id):
+            print('.    '.join([str(count + 1), item]))
     print("\n")
 
     # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
     column_length_difference = len(df_dict['kdsu']) - len(df_dict['su'])
 
-    if column_length_difference < 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['kdsu'].append('ZZZ')
-
-    elif column_length_difference > 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['su'].append('ZZZ')
-
     for column_name, column_rows in df_dict.items():
         df_dict[column_name] = sorted(column_rows)
+
+    if column_length_difference > 0:
+        smaller_list_to_larger_comparison(df_dict['su'], df_dict['kdsu'])
+        larger_list_to_smaller_comparison(df_dict['kdsu'], df_dict['su'])
+
+    elif column_length_difference < 0:
+        smaller_list_to_larger_comparison(df_dict['kdsu'], df_dict['su'])
+        larger_list_to_smaller_comparison(df_dict['su'], df_dict['kdsu'])
 
     df = pd.DataFrame(data=df_dict)
     df.to_csv("csvs/{}_csvs/kdsu_su_id.csv".format(pn_metadata_file_name))
@@ -347,42 +410,47 @@ def create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map):
 def create_kdig_ig_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
 
     df_dict = {}
-    df_dict['kdsu.kdig'] = []
-    df_dict['su.ig'] = []
+    df_dict['kdsu-->kdig'] = []
+    df_dict['su-->ig'] = []
     for kdsu, kdig_dict in kdSU_kdIG_kdIT_map.items():
         for kdig, kdit_list in kdig_dict.items():
-            df_dict['kdsu.kdig'].append('.'.join([kdsu, kdig]))
+            df_dict['kdsu-->kdig'].append('-->'.join([kdsu, kdig]))
 
     for su, ig_dict in su_ig_it_map.items():
         for ig, it_list in ig_dict.items():
-            df_dict['su.ig'].append('.'.join([su, ig]))
+            df_dict['su-->ig'].append('-->'.join([su, ig]))
 
     # report
-    kdig_ig_diff = list(set(df_dict['kdsu.kdig']) - set(df_dict['su.ig']))
-    ig_kdig_diff = list(set(df_dict['su.ig']) - set(df_dict['kdsu.kdig']))
+    kdig_ig_diff = sorted(list(set(df_dict['kdsu-->kdig']) - set(df_dict['su-->ig'])))
+    ig_kdig_diff = sorted(list(set(df_dict['su-->ig']) - set(df_dict['kdsu-->kdig'])))
 
     print("------------------------------- kdig - ig - id -------------------------------")
-    print("pn_metadata has the following kdig values that are not present in study designer ig set: (format ==> kdsu.kdig)")
-    for count, item in enumerate(kdig_ig_diff):
-        print('.    '.join([str(count + 1), item]))
-    print("study_designer has the following su values that are not present in pn_metadata kdsu set: (format ==> su.ig)")
-    for count, item in enumerate(ig_kdig_diff):
-        print('.    '.join([str(count + 1), item]))
+    print("pn_metadata has the following kdig values that are not present in study designer ig set: (kdsu-->kdig vs. su-->ig)")
+    if len(kdig_ig_diff) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(kdig_ig_diff):
+            print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following su values that are not present in pn_metadata kdsu set: (su-->ig vs. kdsu-->kdig)")
+    if len(ig_kdig_diff) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(ig_kdig_diff):
+            print('.    '.join([str(count + 1), item]))
     print("\n")
 
-    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
-    column_length_difference = len(df_dict['kdsu.kdig']) - len(df_dict['su.ig'])
-
-    if column_length_difference < 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['kdsu.kdig'].append('ZZZ.ZZZ')
-
-    elif column_length_difference > 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['su.ig'].append('ZZZ.ZZZ')
+    column_length_difference = len(df_dict['kdsu-->kdig']) - len(df_dict['su-->ig'])
 
     for column_name, column_rows in df_dict.items():
-        df_dict[column_name] = sorted(column_rows, key=lambda item: item.split('.')[1])
+        df_dict[column_name] = sorted(column_rows)
+
+    if column_length_difference > 0:
+        smaller_list_to_larger_comparison(df_dict['su-->ig'], df_dict['kdsu-->kdig'])
+        larger_list_to_smaller_comparison(df_dict['kdsu-->kdig'], df_dict['su-->ig'])
+
+    elif column_length_difference < 0:
+        smaller_list_to_larger_comparison(df_dict['kdsu-->kdig'], df_dict['su-->ig'])
+        larger_list_to_smaller_comparison(df_dict['su-->ig'], df_dict['kdsu-->kdig'])
 
     df = pd.DataFrame(data=df_dict)
     df.to_csv("csvs/{}_csvs/kdsu.kdig_su.ig_id.csv".format(pn_metadata_file_name))
@@ -391,59 +459,65 @@ def create_kdig_ig_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
 
 def create_kdit_it_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
     '''
-    this function outputs two dataframes; one with columns kdig.kdit ig.it.
+    this function outputs two dataframes; one with columns kdig-->kdit ig-->it.
     '''
 
     df_dict = {}
 
-    df_dict['kdig.kdit'] = []
-    df_dict['ig.it'] = []
-    df_dict['it.includeInReports'] = []
+    df_dict['kdig-->kdit'] = []
+    df_dict['ig-->it'] = []
+
+    df_dict_includeInReports = {}
 
     for kdsu, kdig_dict in kdSU_kdIG_kdIT_map.items():
         for kdig, kdit_list in kdig_dict.items():
             for kdit in kdit_list:
-                df_dict['kdig.kdit'].append('.'.join([kdig, kdit]))
+                df_dict['kdig-->kdit'].append('-->'.join([kdig, kdit]))
 
     for su, ig_dict in su_ig_it_map.items():
         for ig, it_list in ig_dict.items():
             for it in it_list:
                 temp = it.split('.')
                 it_without_includeinreport = temp[0]
-                df_dict['ig.it'].append('.'.join([ig, it_without_includeinreport]))
-                df_dict['it.includeInReports'].append(it)
+                df_dict['ig-->it'].append('-->'.join([ig, it_without_includeinreport]))
+                df_dict_includeInReports[it_without_includeinreport] = temp[1]
 
     # report
-    kdit_it_diff = list(set(df_dict['kdig.kdit']) - set(df_dict['ig.it']))
-    it_kdit_diff = list(set(df_dict['ig.it']) - set(df_dict['kdig.kdit']))
+    kdit_it_diff = sorted(list(set(df_dict['kdig-->kdit']) - set(df_dict['ig-->it'])))
+    it_kdit_diff = sorted(list(set(df_dict['ig-->it']) - set(df_dict['kdig-->kdit'])))
 
     print("------------------------------- kdit - it - id -------------------------------")
-    print("pn_metadata has the following kdit values that are not present in study designer it set: (format ==> kdig.kdit)")
-    for count, item in enumerate(kdit_it_diff):
-        print('.    '.join([str(count + 1), item]))
-    print("study_designer has the following it values that are not present in pn_metadata kdit set: (format ==> ig.it)")
-    for count, item in enumerate(it_kdit_diff):
-        print('.    '.join([str(count + 1), item]))
+    print("pn_metadata has the following kdit values that are not present in study designer it set: (kdig-->kdit vs. ig-->it)")
+    if len(kdit_it_diff) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(kdit_it_diff):
+            print('.    '.join([str(count + 1), item]))
+    print("study_designer has the following it values that are not present in pn_metadata kdit set: (ig-->it vs. kdig-->kdit)")
+    if len(it_kdit_diff) == 0:
+        print("ALL VALUES MATCH")
+    else:
+        for count, item in enumerate(it_kdit_diff):
+            print('.    '.join([str(count + 1), item]))
     print("\n")
 
-    # in case of rows not matching count, append the smaller one with 'ZZZ-None' so these rows end up at the buttom when column is sorted.
-    column_length_difference = len(df_dict['kdig.kdit']) - len(df_dict['ig.it'])
-
-    if column_length_difference < 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['kdig.kdit'].append('ZZZ.ZZZ')
-
-    elif column_length_difference > 0:
-        for count in range(abs(column_length_difference)):
-            df_dict['ig.it'].append('ZZZ.ZZZ')
-            df_dict['it.includeInReports'].append('ZZZ.ZZZ')
+    column_length_difference = len(df_dict['kdig-->kdit']) - len(df_dict['ig-->it'])
 
     for column_name, column_rows in df_dict.items():
-        # sort on kdit and it
-        if column_name == 'it.includeInReports':
-            df_dict[column_name] = sorted(column_rows, key=lambda item: item.split('.')[0])
-        else:
-            df_dict[column_name] = sorted(column_rows, key=lambda item: item.split('.')[1])
+        df_dict[column_name] = sorted(column_rows)
+
+    if column_length_difference > 0:
+        smaller_list_to_larger_comparison(df_dict['ig-->it'], df_dict['kdig-->kdit'])
+        larger_list_to_smaller_comparison(df_dict['kdig-->kdit'], df_dict['ig-->it'])
+        df_dict['it-->IncludeInReports'] = add_includeInReports(df_dict['ig-->it'], df_dict_includeInReports)
+
+    elif column_length_difference < 0:
+        smaller_list_to_larger_comparison(df_dict['kdig-->kdit'], df_dict['ig-->it'])
+        larger_list_to_smaller_comparison(df_dict['ig-->it'], df_dict['kdig-->kdit'])
+        df_dict['it-->IncludeInReports'] = add_includeInReports(df_dict['ig-->it'], df_dict_includeInReports)
+
+    for column_name, column_rows in df_dict.items():
+        print("{} has {} rows".format(column_name, len(column_rows)))
 
     df = pd.DataFrame(data=df_dict)
     df.to_csv("csvs/{}_csvs/kdig.kdit_ig.it_it.includeInReports_id.csv".format(pn_metadata_file_name))
@@ -488,22 +562,16 @@ if __name__ == "__main__":
 
     with open("reports/{}".format(report_file_name), "a+") as file:
 
-        dataframe = create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map)
-        file.write(dataframe.to_string())
-        file.write('\n\n')
-
         dataframe = create_kdsu_su_name_csv_diff_report(kdSU_name_map, su_name_map)
         file.write(dataframe.to_string())
         file.write('\n\n')
 
-        file.write('in the following dataframe, columns are sorted by kdig and ig respectively')
+        dataframe = create_kdsu_su_id_csv_diff_report(kdSU_name_map, su_name_map)
+        file.write(dataframe.to_string())
         file.write('\n\n')
 
         dataframe = create_kdig_ig_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map)
         file.write(dataframe.to_string())
-        file.write('\n\n')
-
-        file.write('in the following dataframe, columns are sorted by kdit, it and it respectively')
         file.write('\n\n')
 
         dataframe = create_kdit_it_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map)

@@ -516,9 +516,6 @@ def create_kdit_it_id_csv_diff_report(kdSU_kdIG_kdIT_map, su_ig_it_map):
         larger_list_to_smaller_comparison(df_dict['ig-->it'], df_dict['kdig-->kdit'])
         df_dict['it-->IncludeInReports'] = add_includeInReports(df_dict['ig-->it'], df_dict_includeInReports)
 
-    for column_name, column_rows in df_dict.items():
-        print("{} has {} rows".format(column_name, len(column_rows)))
-
     df = pd.DataFrame(data=df_dict)
     df.to_csv("csvs/{}_csvs/kdig.kdit_ig.it_it.includeInReports_id.csv".format(pn_metadata_file_name))
     return df

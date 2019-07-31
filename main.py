@@ -204,9 +204,14 @@ def get_study_designer_json(soup_datadictionary, pn_metadata_protocol):
     use the latest design id to retrieve the correct study designer json
     """
     study_design_ids = get_all_study_design_ids(pn_metadata_protocol)
-    print("the list of all study design ids based on study protocol extracted from pn_metadata: \n{} \n".format(study_design_ids))
-    latest_design_id = find_latest_design_id(study_design_ids)
-    print("the latest study design id: \n{} \n".format(latest_design_id))
+    if len(study_design_ids) == 0:
+        print("Unable to find design ids associated with the protocol name in pn_metadata xml file. You may enter your design idea of interest here: ")
+        latest_design_id = input("Enter the full name of the pn metadata xml file you would like to parse (e.g. pn_metadata.xml): ")
+
+    else:
+        print("the list of all study design ids based on study protocol extracted from pn_metadata: \n{} \n".format(study_design_ids))
+        latest_design_id = find_latest_design_id(study_design_ids)
+        print("the latest study design id: \n{} \n".format(latest_design_id))
 
     response = requests.get("http://naphznv3a.phtstudy.com:3010/api/v1/json/export/{0}/ods".format(latest_design_id))
     content = response.content.decode('latin-1').encode('utf8')
